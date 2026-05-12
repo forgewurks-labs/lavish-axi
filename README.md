@@ -33,7 +33,7 @@ That loses the thing HTML is best at: interactivity.
 
 Lavish Editor opens agent-generated HTML files in a local browser, lets you pinpoint elements or selected text and send feedback to the agent to address.
 
-- **Local only** - Work with your local HTML artifacts with a local CLI. Zero cloud dependency.
+- **Local-first** - Work with local HTML artifacts through a local CLI; publishing to HtmlShip is optional when you need a share URL.
 - **Human-AI collaboration** - Annotate elements, selected text ranges, and send messages to the agent without leaving Lavish Editor.
 - **Battery included** - Lavish Editor teaches your agent good visualization for common use cases such as technial plans, design explorations and more out of the box.
 
@@ -96,6 +96,9 @@ pnpm link
 
 - **File-path identity** - Sessions are keyed by the canonical HTML file path, so agents do not need opaque IDs.
 - **Sandboxed artifact** - The artifact runs in an iframe while Lavish injects a small SDK for annotations, snapshots, and feedback controls, plus Tailwind CSS v4 and DaisyUI v5 design assets unless the HTML includes `<meta name="lavish-design" content="off">`.
+- **Optional sharing** - The browser Share button can publish the current HTML file to HtmlShip, with optional password and expiration controls.
+  Local review stays local unless you publish.
+  Shared pages rewrite Lavish design assets to public CDN URLs, omit the annotation SDK, and may not resolve local sibling assets.
 - **Feedback controls** - Mark buttons, choices, and other interactive elements with `data-lavish-action` so Lavish does not annotate them, then call `window.lavish.queuePrompt()` or `window.lavish.sendQueuedPrompts()` from the control handler.
 - **Precise targets** - Text annotations include selected text plus range anchors, so agents are not limited to whole-element selectors.
 - **Local-first state** - Session state stays under `.lavish-axi/` in the workspace.
