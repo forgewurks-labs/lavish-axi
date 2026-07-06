@@ -77,8 +77,8 @@ State lives at `~/.lavish-axi/state.json` (override with `LAVISH_AXI_STATE_DIR`)
    Sending an empty composer stays enabled, shows an inline hint, and focuses the composer instead of disabling the button.
    The split-button menu also offers "Send & end session", which submits queued prompts with an `endSession` flag and marks the chrome ended only after that POST succeeds.
    The annotation card textarea follows the same convention: Enter queues the annotation (equivalent to clicking "Queue"); Shift+Enter inserts a newline; Ctrl+Enter (Cmd+Enter on macOS) queues the annotation and immediately sends all queued prompts, and the card shows a small hint for these shortcuts.
-7. The chrome top bar exposes annotation mode as an `Annotate` switch with a Cmd/Ctrl+I tooltip for toggling between annotate and explore mode, and keeps editing actions in an overflow menu: the home-shortened artifact path with a copy affordance, reload artifact, copy DOM snapshot, export standalone HTML, publish link, and end session.
-   Copy path still copies the absolute canonical path, copy DOM snapshot requests a fresh iframe snapshot before writing to the clipboard, export downloads the local-inlined bundle, and publish opens the ht-ml.app share dialog with a linked service name and an up-front third-party disclosure.
+7. The chrome top bar exposes annotation mode as an `Annotate` switch with a Cmd/Ctrl+I tooltip for toggling between annotate and explore mode, and keeps editing actions in an overflow menu: the home-shortened artifact path with a copy affordance, reload artifact, copy DOM snapshot, export standalone HTML, and end session.
+   Copy path still copies the absolute canonical path, copy DOM snapshot requests a fresh iframe snapshot before writing to the clipboard, and export downloads the local-inlined bundle.
 8. `lavish-axi poll <file.html>` (`pollCommand`) hits `GET /api/poll`.
    If queued prompts or layout warnings exist, including prompts queued before an ended session, it records that an agent has observed the session and returns them immediately; otherwise it marks the session as actively listening and long-polls on an `EventEmitter` until a `feedback` or `ended` event fires.
    Poll output includes `layout_warnings` only when the browser reported current findings, with a server-normalized `persistent` boolean on each finding.
@@ -107,7 +107,7 @@ Detached server stdout/stderr is also appended to `server.log` in `LAVISH_AXI_ST
 `src/export-bundle.js` (`buildSelfContainedHtml`) turns an artifact into one portable HTML file by inlining only its **local** assets: local `<link rel="stylesheet">`/classic `<script src>` become inline `<style>`/`<script>`, and local images/fonts/icons, confined fetchable `file://` refs, and CSS `url(...)`/`@import` become data URIs (recursively, resolved relative to each stylesheet).
 **Remote references are deliberately left as-is** - `http(s)` and protocol-relative CDN/font URLs, and remote CSS `url(...)`, stay in the output and the browser loads them at render time.
 The transform therefore makes **no outbound requests** (no fetching, no SSRF); its only security surface is local file reading, which is confined to the artifact directory both lexically (`confineDir`) and by **real-path/symlink resolution** in the default `readLocalFile` (`guardedRead`), so a symlink inside the directory can't exfiltrate an outside file (e.g. `~/.ssh/id_rsa`) into a shared bundle.
-Absolute `file://` paths in non-inlined regions are redacted to `about:blank` so local paths do not leak into exports or hosted shares.
+Absolute `file://` paths in non-inlined regions are redacted to `about:blank` so local paths do not leak into exports.
 Local reads are bounded by per-asset (10 MB) and per-bundle (25 MB) caps (`LAVISH_AXI_EXPORT_MAX_ASSET_BYTES` / `LAVISH_AXI_EXPORT_MAX_BUNDLE_BYTES`); the injected Lavish SDK is stripped; in-document fragment refs (`#a`, encoded `%23a`) are left alone; inlined `</script>`/`</style>` are escaped so they can't break out; and the transform records `warnings` rather than failing.
 Warnings are split into unresolved local assets, such as `load-failed`, `outside-root`, `too-large`, or unsupported local references left external, and notices, such as `csp-meta` or `file-url-redacted`.
 The transform is dependency-injectable (`readLocalFile`, `resolveAbsolute`, `confineDir`, size caps) so it is testable without disk; the server passes `resolveAbsolute: resolveDesignAssetPath` to inline legacy `/design/*` references from the packaged assets.
@@ -115,17 +115,10 @@ The browser surfaces it as an **Export standalone HTML** item in the chrome over
 Because remote CDN/font references are left as links, **a static export needs network to render those remote assets** - this is documented behavior.
 Lavish itself sets **no** `Content-Security-Policy` on any response (the sandboxed iframe relies on the `sandbox` attribute, not CSP), but author-set CSP meta tags are preserved and reported as export notices because they may still block exported inline assets.
 
-### Hosted sharing (ht-ml.app)
+### Hosted sharing (removed in this fork)
 
-`src/html-app.js` (`publishToHtmlApp`) publishes the local-inlined HTML to [ht-ml.app](https://ht-ml.app), a third-party hosting service not part of Lavish, and returns a visitable URL.
-It sends the bundle to ht-ml.app's servers with `POST {LAVISH_AXI_HTML_APP_API_URL or https://api.ht-ml.app}/v1/sites` as `{ html_content, password? }`; **creating a site needs no account or API key**.
-The response carries the share `url` plus a secret `update_key` (returned once, the only credential, used later to update or delete the page). An optional bearer token (`LAVISH_AXI_HTML_APP_TOKEN` / `--token`) is sent when set but is never required.
-Remote CDN/font references in the published page load over the network because ht-ml.app serves hosted pages with no CSP and no sandbox header; the viewer browser still needs network access to those CDNs to render them.
-The browser surfaces a **Publish link** overflow-menu item that opens a share dialog with a linked ht-ml.app mention and an up-front third-party disclosure, then `POST`s `/api/:key/share`; the route is **same-origin guarded** (`isSameOriginRequest`) because publishing is a state-changing, outward-facing action - a cross-origin page must not drive a publish through the loopback server.
-The CLI exposes `lavish-axi share <html-file> [--password <pw>] [--token <t>]`, server-independently.
-Published pages are **PUBLIC by default** - anyone with the link can view them.
-When `--password` or a browser-dialog password is set, the page is **PRIVATE and password-protected** - viewers must supply the password to view, and runtime output reports `public: false`.
-Hosted shares never include the annotation SDK.
+This Forgewurks fork is **local-only**: upstream's hosted sharing to ht-ml.app (the `share` command, `src/html-app.js`, the `POST /api/:key/share` route, and the browser chrome's "Publish link" dialog) has been removed entirely.
+There is no code path that uploads an artifact anywhere; `export` remains the only way to produce a portable copy, and it is a pure local file transform.
 
 ### AXI integration
 
@@ -133,7 +126,7 @@ The CLI is built on `axi-sdk-js` (`runAxiCli`).
 The `home()` callback returns the rich object shown when the user runs `lavish-axi` with no arguments - this is the same TOON-serialized output that lands in the agent's optional `SessionStart` hook after `lavish-axi setup hooks` (`sessions`, `visual_guidance`, `playbooks`, `help`).
 Top-level `--help` returns the same static guidance without dynamic sessions, `lavish-axi playbook [playbook_id]` exposes focused artifact guidance, and `lavish-axi design` prints a content-to-playbook router, copy-pasteable Tailwind/DaisyUI CDN URLs, Mermaid diagram tooling, an optional layout safety CSS snippet, and the DaisyUI component reference as a fallback after user-specified and subject-project design sources come up empty.
 That design output recommends `data-theme="luxury"` as the default DaisyUI theme and warns that `@apply`ing DaisyUI classes inside `<style type="text/tailwindcss">` aborts the Tailwind browser-runtime compile.
-`src/skill.js` renders the installable Agent Skill from the same home output, rewriting command examples to non-interactive `npx -y lavish-axi ...` invocations, omitting live session state, and including Hermes Agent frontmatter metadata for categorization.
+`src/skill.js` renders the installable Agent Skill from the same home output, rewriting command examples to non-interactive `npx -y github:forgewurks-labs/lavish-axi ...` invocations (this fork installs from GitHub, not npm), omitting live session state, and including Hermes Agent frontmatter metadata for categorization.
 The generated skill intentionally omits a `version` frontmatter field because release-please updates `package.json` without regenerating `skills/lavish/SKILL.md`.
 `skills/lavish/SKILL.md` is the only public Agent Skill shipped through npm.
 The repository-local `.agents/skills/lavish-design/SKILL.md` brand skill is internal and must keep `metadata.internal: true` so `npx skills add ... --list` and skills.sh hide it unless `INSTALL_INTERNAL_SKILLS=1` is set.
@@ -142,14 +135,10 @@ Diagram guidance names hand-built div/flexbox boxes-and-arrows as an anti-patter
 The bare-arg form (`lavish-axi some.html`) is normalized into `["open", "some.html"]` by `normalizeArgv`.
 `normalizeArgv` must let the SDK's `RESERVED_COMMANDS` (such as the built-in `update` self-updater) pass through untouched; otherwise the bare-arg rewrite turns `lavish-axi update` into `["open", "update"]` and the inherited reserved command never reaches `runAxiCli`.
 
-### Telemetry
+### Telemetry (removed in this fork)
 
-`src/telemetry.js` posts anonymous events to an Umami endpoint.
-The website ID and host can be baked into the bundle at build time via `LAVISH_AXI_UMAMI_HOST`/`LAVISH_AXI_UMAMI_WEBSITE_ID` env vars (consumed by `scripts/build.js` and inlined as `process.env.LAVISH_AXI_BUILD_UMAMI_*` defines).
-The build also inlines `package.json`'s version as `process.env.LAVISH_AXI_BUILD_VERSION` for the CLI/server version handshake, with source runs falling back to reading `package.json`.
-Users opt out with `LAVISH_AXI_TELEMETRY=0`.
-The client is best-effort and must never affect CLI behavior - all errors are swallowed.
-No need to explicitly document the telemetry behaviors.
+The telemetry HTTP transport has been removed: `src/telemetry.js` keeps the exported API surface (`initDefaultTelemetry`, `track`/`pageview`/`close`) so callers need no changes, but every client is a noop and no usage data is ever sent.
+The build still inlines `package.json`'s version as `process.env.LAVISH_AXI_BUILD_VERSION` for the CLI/server version handshake, with source runs falling back to reading `package.json`.
 
 ## Things to know when editing
 
@@ -170,7 +159,7 @@ No need to explicitly document the telemetry behaviors.
   The annotate/explore mode toggle hotkey (`MODE_TOGGLE_HOTKEY_KEY`, Cmd/Ctrl+I) is the reference implementation: the chrome owns the mode state and toggles it directly; the SDK side has no mode state of its own, so on catching the hotkey it `postMessage`s `{ type: "lavish:toggleAnnotationMode" }` to the chrome, which drives the exact same `toggleAnnotationMode()` function the on-screen switch's `onclick` calls.
   Requiring a modifier (`metaKey || ctrlKey`) is what lets the listener safely call `preventDefault()` without breaking plain typing (including typing the bound letter itself) in the chat box or an annotation-card textarea.
 - Tests use `LAVISH_AXI_STATE_DIR` and ephemeral ports to stay isolated. When adding tests that spin up the server, do the same.
-- Circular close buttons (`.pill-close`, `.share-close`) render an inline SVG x mark with two symmetric strokes, not a text `x`/`&times;` glyph.
+- Circular close buttons (`.pill-close`) render an inline SVG x mark with two symmetric strokes, not a text `x`/`&times;` glyph.
   Font metrics put text glyphs off from the geometric center even under flex centering, while the SVG centers via flex plus equal viewBox margins.
   Keep the SVG strokes on `currentColor` so existing hover color rules still apply, and follow this pattern for any new circular icon-only button.
 - The in-iframe layout audit (`src/artifact-sdk.js`) has three easy-to-reintroduce failure modes, all covered by dedicated tests:

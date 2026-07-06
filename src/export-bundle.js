@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 // the artifact references by relative path, fetchable file:// URL, or a trusted root-absolute
 // resolver - as inline <style>/<script> blocks and data URIs. Remote references (http(s) CDN/font URLs,
 // protocol-relative URLs, CSS url() pointing at the network) are deliberately LEFT AS-IS: the
-// browser loads them at render time, so the export and the hosted share render correctly wherever
+// browser loads them at render time, so the export renders correctly wherever
 // there is network access. Because nothing remote is ever fetched, the transform makes no outbound
 // requests (no SSRF) and stays a small, deterministic local-file rewrite. The only security surface
 // is local file reading, which is confined to the artifact directory both lexically and by

@@ -16,8 +16,12 @@ function playbookList(playbooks) {
   return playbooks.map((p) => `- \`${p.id}\` - ${p.use_when}`).join("\n");
 }
 
+// This fork installs from GitHub, not the npm registry - the npm package `lavish-axi`
+// is upstream's, so every invocation goes through the github: specifier.
+const NPX_INVOCATION = "npx -y github:forgewurks-labs/lavish-axi";
+
 function skillCommandText(text) {
-  return text.replaceAll("`lavish-axi", "`npx -y lavish-axi");
+  return text.replaceAll("`lavish-axi", `\`${NPX_INVOCATION}`);
 }
 
 /**
@@ -45,8 +49,8 @@ metadata:
 
 ${skillCommandText(home.description)}
 
-You do not need lavish-axi installed globally - invoke it with \`npx -y lavish-axi <html-file>\`.
-If lavish-axi output shows a follow-up command starting with \`lavish-axi\`, run it as \`npx -y lavish-axi ...\` instead.
+You do not need lavish-axi installed globally - invoke it with \`${NPX_INVOCATION} <html-file>\`.
+If lavish-axi output shows a follow-up command starting with \`lavish-axi\`, run it as \`${NPX_INVOCATION} ...\` instead.
 
 ## Request
 
@@ -62,14 +66,14 @@ ${home.help[home.help.length - 1]}
 ## Workflow
 
 1. Create the HTML artifact (default location \`.lavish/<name>.html\` in the working directory).
-2. Run \`npx -y lavish-axi <html-file>\` to open or resume a review session in the browser.
-3. Run \`npx -y lavish-axi poll <html-file>\` to long-poll for the user's annotations, queued prompts, and browser-reported \`layout_warnings\`.
+2. Run \`${NPX_INVOCATION} <html-file>\` to open or resume a review session in the browser.
+3. Run \`${NPX_INVOCATION} poll <html-file>\` to long-poll for the user's annotations, queued prompts, and browser-reported \`layout_warnings\`.
    The poll stays silent until the user acts or the real browser reports fresh layout warnings - leave it running, never kill it.
    If your harness limits how long a foreground command may run, run the poll as a background task; if it gets killed or times out anyway, just re-run it - queued feedback is never lost.
 4. If poll returns \`layout_warnings\`, follow the returned \`next_step\`: fix and re-check fresh error-severity findings, but proceed with a note instead of looping when every current warning is persistent or low-severity.
 5. Apply human feedback, then poll again with \`--agent-reply "<message>"\` to reply in the browser and keep the loop going.
-6. Run \`npx -y lavish-axi end <html-file>\` when the review is finished.
-7. If the user ends the session from the browser instead, \`npx -y lavish-axi <html-file>\` refuses to reopen it and says so - only pass \`--reopen\` when the user asks for further review or something genuinely important needs their visual attention. Otherwise deliver remaining updates directly in this conversation.
+6. Run \`${NPX_INVOCATION} end <html-file>\` when the review is finished.
+7. If the user ends the session from the browser instead, \`${NPX_INVOCATION} <html-file>\` refuses to reopen it and says so - only pass \`--reopen\` when the user asks for further review or something genuinely important needs their visual attention. Otherwise deliver remaining updates directly in this conversation.
 
 ## Visual guidance
 
@@ -77,7 +81,7 @@ ${bullets(home.visual_guidance)}
 
 ## Playbooks
 
-Run \`npx -y lavish-axi playbook <id>\` for focused, detailed guidance on any of these.
+Run \`${NPX_INVOCATION} playbook <id>\` for focused, detailed guidance on any of these.
 ${PLAYBOOK_ROUTER_HELP}
 For flows, architecture, state, or sequence diagrams, do not hand-build boxes-and-arrows from div/flexbox; open the diagram playbook and use Mermaid unless SVG is needed for richly annotated nodes.
 

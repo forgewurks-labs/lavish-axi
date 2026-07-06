@@ -5,7 +5,7 @@ import { createHomeOutput } from "../src/cli.js";
 import { SKILL_DESCRIPTION, createSkillMarkdown } from "../src/skill.js";
 
 function skillCommandText(text) {
-  return text.replaceAll("`lavish-axi", "`npx -y lavish-axi");
+  return text.replaceAll("`lavish-axi", "`npx -y github:forgewurks-labs/lavish-axi");
 }
 
 test("createSkillMarkdown emits valid frontmatter naming the lavish skill", () => {
@@ -78,12 +78,20 @@ test("createSkillMarkdown omits setup hooks guidance", () => {
   assert.doesNotMatch(md, /setup hooks/);
 });
 
-test("createSkillMarkdown uses non-interactive npx commands", () => {
+test("createSkillMarkdown uses non-interactive npx commands installed from the fork's GitHub repo", () => {
   const md = createSkillMarkdown();
 
-  assert.match(md, /`npx -y lavish-axi <html-file>`/);
+  assert.match(md, /`npx -y github:forgewurks-labs\/lavish-axi <html-file>`/);
   assert.match(md, /If lavish-axi output shows a follow-up command starting with `lavish-axi`/);
-  assert.match(md, /run it as `npx -y lavish-axi/);
+  assert.match(md, /run it as `npx -y github:forgewurks-labs\/lavish-axi/);
   assert.doesNotMatch(md, /`npx lavish-axi/);
+  assert.doesNotMatch(md, /`npx -y lavish-axi/);
   assert.doesNotMatch(md, /Run `lavish-axi/);
+});
+
+test("createSkillMarkdown never mentions the removed share command or its hosting service", () => {
+  const md = createSkillMarkdown();
+
+  assert.doesNotMatch(md, /ht-ml\.app/);
+  assert.doesNotMatch(md, /lavish-axi share/);
 });
