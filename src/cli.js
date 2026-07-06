@@ -45,6 +45,15 @@ export async function run(argv) {
   });
   telemetry.pageview(`/${command}`, { command });
   try {
+    // The SDK's built-in `update` resolves this package's name against the npm
+    // registry, which serves the UPSTREAM lavish-axi — running it would replace
+    // this local-only fork with the version that publishes to ht-ml.app.
+    if (normalizedArgv[0] === "update") {
+      throw new AxiError("`update` is disabled in this local-only fork", "VALIDATION_ERROR", [
+        "The npm registry serves the upstream package, which would reintroduce external publishing",
+        "Update by reinstalling: `npx -y github:forgewurks-labs/lavish-axi`",
+      ]);
+    }
     await runAxiCli({
       description: DESCRIPTION,
       version: VERSION,

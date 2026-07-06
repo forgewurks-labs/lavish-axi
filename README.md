@@ -28,6 +28,7 @@
 >
 > - **ht-ml.app publishing** - the `lavish-axi share` command and the browser chrome's "Publish link" dialog are gone; there is no code path that uploads an artifact anywhere.
 > - **The telemetry HTTP client** - the umami transport is deleted; telemetry is unconditionally a no-op.
+> - **The `update` self-updater is disabled** - it resolves against the npm registry, which serves the upstream package; running it would have silently replaced this fork with the publishing-capable original. Update by reinstalling from this repo instead.
 >
 > One caveat: HTML artifacts your agent generates may still reference CDN assets (Tailwind/DaisyUI/Mermaid via jsdelivr, esm.sh), and those load in the viewer's browser when the artifact is opened. Those are **inbound** asset fetches by your browser, not outbound artifact or usage data.
 >

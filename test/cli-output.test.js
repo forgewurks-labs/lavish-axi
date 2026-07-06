@@ -31,6 +31,7 @@ import {
   pollWaitTickText,
   resolveCopilotHookDir,
   resolveHookHomeDir,
+  run,
   resolveServerEntry,
   shutdownServerOnPort,
   shouldForceRestartForLocalBuild,
@@ -1259,5 +1260,27 @@ test("stop command reports when no server is running", async () => {
     assert.deepEqual(output, { server: { status: "not-running", port: freePort } });
   } finally {
     await rm(dir, { force: true, recursive: true });
+  }
+});
+
+test("update command is disabled in the local-only fork", async () => {
+  const stateDir = await mkdtemp(path.join(os.tmpdir(), "lavish-axi-update-guard-"));
+  const previousStateDir = process.env.LAVISH_AXI_STATE_DIR;
+  process.env.LAVISH_AXI_STATE_DIR = stateDir;
+  try {
+    await assert.rejects(
+      () => run(["update"]),
+      (error) => {
+        assert.ok(error instanceof AxiError);
+        assert.equal(error.code, "VALIDATION_ERROR");
+        assert.match(error.message, /disabled in this local-only fork/);
+        assert.ok(error.suggestions.some((item) => item.includes("github:forgewurks-labs/lavish-axi")));
+        return true;
+      },
+    );
+  } finally {
+    if (previousStateDir === undefined) delete process.env.LAVISH_AXI_STATE_DIR;
+    else process.env.LAVISH_AXI_STATE_DIR = previousStateDir;
+    await rm(stateDir, { recursive: true, force: true });
   }
 });
